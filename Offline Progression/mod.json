@@ -1,0 +1,14 @@
+{
+	"geode": "4.3.1",
+	"gd": {
+		"win": "2.2074",
+		"android": "2.2074",
+		"mac": "2.2074",
+		"ios": "2.2074"
+	},
+	"id": "somroti.offlineprogression",
+	"name": "Offline Progression",
+	"version": "1.0.0",
+	"developer": "Somroti",
+	"description": "Save your progression when you are offline"
+}
