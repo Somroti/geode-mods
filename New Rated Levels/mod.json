@@ -1,0 +1,37 @@
+{
+	"geode": "4.6.3",
+	"gd": {
+		"win": "2.2074",
+		"android": "2.2074",
+		"mac": "2.2074",
+		"ios": "2.2074"
+	},
+	"id": "somroteam_dev.new_rated_levels",
+	"name": "New Rated Levels",
+	"version": "v0.0.1-alpha",
+	"developer": "SomroTeam Dev",
+	"description": "Add more rated levels!",
+	"dependencies": [
+		{
+			"id": "hiimjustin000.fake_rate",
+			"version": ">=1.0.0",
+			"importance": "required"
+		}
+	],
+	"incompatibilities": [
+		{
+			"id": "cdc.level_thumbnails",
+			"version": ">=1.0.0",
+			"importance": "breaking"
+		}
+	],
+	"resources": {
+		"files": [
+			"resources/rate.json"
+		]
+	},
+	"links": {
+		"community": "https://discord.gg/7yXRx6yVVy",
+		"source": "https://github.com/Somroti/geode-mods/New Rated Levels"
+	}
+}
