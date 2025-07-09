@@ -8,7 +8,7 @@
 	},
 	"id": "somroteam_dev.new_rated_levels",
 	"name": "New Rated Levels",
-	"version": "v0.0.1-alpha",
+	"version": "v0.0.2-alpha",
 	"developer": "SomroTeam Dev",
 	"description": "Add more rated levels!",
 	"dependencies": [
@@ -33,5 +33,7 @@
 	"links": {
 		"community": "https://discord.gg/7yXRx6yVVy",
 		"source": "https://github.com/Somroti/geode-mods/New Rated Levels"
-	}
+		"homepage": "https://somroti.github.io/project/new-rated-levels/"
+	},
+	"tags":["offline", "enhances", "cheat"]
 }

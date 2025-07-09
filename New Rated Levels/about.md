@@ -1,5 +1,5 @@
 # <cy>New Rated Levels</c>
-Add more rated levels, with lower standards rate like 1.0 gameplay, 1.5, 2.0... All the levels can be rated! Go on the More Rated Levels website for submit levels (SOON)
+Add more rated levels, with lower standards rate like 1.0 gameplay, 1.5, 2.0... All the levels can be rated! Go on the [More Rated Levels website](https://somroti.github.io/project/new-rated-levels/) for submit levels
 
 #  <cr>WARNING</c>
 This mod could be considered **cheating** because it modifies stats. Therefore, **a ban from the leaderboard is possible.** In the future, I will add a setting to disable receiving stars.

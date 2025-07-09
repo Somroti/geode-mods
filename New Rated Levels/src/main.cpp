@@ -58,14 +58,54 @@ void createDefaultRateJson(const std::filesystem::path& filePath) {
 
         file << R"({
     "levels": {
-        "117448912": { "stars": 10, "difficulty": 7, "status": 0, "dib": 0 },
-        "117251972": { "stars": 7, "difficulty": 4, "status": 1, "dib": 0 },
-        "119154457": { "stars": 10, "difficulty": 8, "status": 1, "dib": 6 },
-        "119183902": { "stars": 5, "difficulty": 3, "status": 1, "dib": 0 },
-        "114552735": { "stars": 4, "difficulty": 3, "status": 1, "dib": 0 },
-        "113620475": { "stars": 5, "difficulty": 3, "status": 0, "dib": 0 },
-        "112856885": { "stars": 1, "difficulty": 1, "status": 0, "dib": 0 },
-        "120897907": { "stars": 2, "difficulty": 1, "status": 0, "dib": 0 }
+        "117448912": {
+            "stars": 10,
+            "difficulty": 7,
+            "status": 0,
+            "dib": 3
+        },
+        "117251972": {
+            "stars": 7,
+            "difficulty": 4,
+            "status": 1,
+            "dib": 0
+        },
+        "119154457": {
+            "stars": 10,
+            "difficulty": 8,
+            "status": 1,
+            "dib": 6
+        },
+        "119183902": {
+            "stars": 5,
+            "difficulty": 3,
+            "status": 1,
+            "dib": 0
+        },
+        "114552735": {
+            "stars": 4,
+            "difficulty": 3,
+            "status": 1,
+            "dib": 0
+        },
+        "113620475": {
+            "stars": 5,
+            "difficulty": 3,
+            "status": 0,
+            "dib": 0
+        },
+        "112856885": {
+            "stars": 1,
+            "difficulty": 1,
+            "status": 0,
+            "dib": 0
+        },
+        "120897907": {
+            "stars": 2,
+            "difficulty": 1,
+            "status": 0,
+            "dib": 0
+        }
     }
 })";
         file.close();
