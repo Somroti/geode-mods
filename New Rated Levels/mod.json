@@ -8,7 +8,7 @@
 	},
 	"id": "somroteam_dev.new_rated_levels",
 	"name": "New Rated Levels",
-	"version": "v0.0.2-alpha",
+	"version": "v0.0.3-alpha",
 	"developer": "SomroTeam Dev",
 	"description": "Add more rated levels!",
 	"dependencies": [
