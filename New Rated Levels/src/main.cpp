@@ -154,96 +154,6 @@ void updateFakeRateSavedJson() {
         outFile.close();
 
         log::info("Fichier saved.json créé avec succès");
-    } catch (const std::exception& e) {
-        log::error("Erreur lors de la création du saved.json: {}", e.what());
-    }
-}
-}
-        log::warn("Cache non chargé ou vide, impossible de mettre à jour saved.json");
-    if (isProcessing.load()) {
-
-    try {
-
-        }
-
-            if (existingLevels.find(levelID) == existingLevels.end()) {
-
-            return;
-        if (std::filesystem::exists(savedJsonFile)) {
-
-        if (hasExistingFile) {
-                contentStream << existingFile.rdbuf();
-        }
-            log::error("Impossible d'ouvrir saved.json pour l'écriture");
-
-void updateFakeRateSavedJson() {
-        auto resourcesDir = Mod::get()->getResourcesDir();
-            log::error("Impossible d'obtenir le répertoire des ressources");
-        }
-        auto modSubDir = resourcesDir.value() / "somroteam_dev.new_rated_levels";
-
-            log::warn("Fichier rate.json non trouvé");
-        }
-        // Lire le fichier rate.json
-        if (!rateFile.is_open()) {
-            return;
-
-                           std::istreambuf_iterator<char>());
-
-        auto geodeDir = geode::dirs::getSaveDir();
-        auto savedJsonFile = fakeRateDir / "saved.json";
-        if (!std::filesystem::exists(fakeRateDir)) {
-        }
-        // Parser et écrire directement
-        if (!outFile.is_open()) {
-            return;
-
-        outFile << "{\n    \"fake-rate\": [";
-
-        // Parser simplement le JSON
-        std::regex levelRegex("\"(\\d+)\"\\s*:\\s*\\{[^}]*\"stars\"\\s*:\\s*(\\d+)[^}]*\"difficulty\"\\s*:\\s*(\\d+)[^}]*\"status\"\\s*:\\s*(\\d+)[^}]*\"dib\"\\s*:\\s*(\\d+)");
-
-        std::sregex_iterator iter(content.begin(), content.end(), levelRegex);
-        std::sregex_iterator end;
-
-        bool first = true;
-        while (iter != end) {
-            std::smatch match = *iter;
-
-            int levelID = std::stoi(match[1].str());
-            int stars = std::stoi(match[2].str());
-            int difficulty = std::stoi(match[3].str());
-            int status = std::stoi(match[4].str());
-            int dib = std::stoi(match[5].str());
-
-            if (!first) outFile << ",";
-            first = false;
-
-            int moreDifficultiesOverride = (stars == 4 || stars == 7 || stars == 9) ? stars : 0;
-
-            outFile << "\n        {\n";
-            outFile << "            \"id\": " << levelID << ",\n";
-            outFile << "            \"stars\": " << stars << ",\n";
-            outFile << "            \"feature\": " << status << ",\n";
-            outFile << "            \"difficulty\": " << difficulty << ",\n";
-            outFile << "            \"more-difficulties-override\": " << moreDifficultiesOverride << ",\n";
-            outFile << "            \"grandpa-demon-override\": 0,\n";
-            outFile << "            \"demons-in-between-override\": " << dib << ",\n";
-            outFile << "            \"gddp-integration-override\": 0,\n";
-            outFile << "            \"coins\": " << (stars > 0 ? "true" : "false") << "\n";
-            outFile << "        }";
-
-            ++iter;
-        }
-
-        outFile << "\n    ]\n}";
-        outFile.close();
-
-        log::info("Fichier saved.json créé avec succès");
-    } catch (const std::exception& e) {
-        log::error("Erreur lors de la création du saved.json: {}", e.what());
-    }
-}
     }
 
     isProcessing.store(false);
@@ -257,9 +167,9 @@ static bool isValidLevel(GJGameLevel* level) {
         int id = level->m_levelID;
         return id > 0 && id < 999999999;
     } catch (...) {
-        return false;
-    }
-}
+        level->m_stars = 0;  # Ne plus attribuer de stars
+        level->m_starsRequested = 0;  # Ne plus demander de stars
+        level->m_ratingsSum = 0;  # Réinitialiser la somme des notes
 
 static bool applyRatingToLevel(GJGameLevel* level, const RatingData& rating) {
     if (!isValidLevel(level)) return false;
@@ -384,7 +294,9 @@ class $modify(NewRatedLevelsLevelBrowserLayer, LevelBrowserLayer) {
                 }
             }
         } catch (...) {
+                // Vérifier si le niveau est toujours visible à l'écran avant d'appliquer
             LevelBrowserLayer::setupLevelBrowser(levels);
+                if (i >= this->m_levels->count()) break;  # Arrêter si la liste a changé
         }
     }
 
