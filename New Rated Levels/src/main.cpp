@@ -1,42 +1,38 @@
 #include "NewRatedLevels.hpp"
-#include <regex>
 #include <fstream>
 #include <sstream>
-#include <Geode/modify/LevelInfoLayer.hpp>
-#include <Geode/modify/LevelBrowserLayer.hpp>
-#include <Geode/modify/LevelCell.hpp>
-#include <Geode/modify/PlayLayer.hpp>
+#include <regex>
 
 using namespace geode::prelude;
 
-// Cache pour les ratings
-static std::unordered_map<int, RatingData> ratingsCache;
-static bool cacheLoaded = false;
-
-// Déclarations
 void createResourcesStructure();
 void createDefaultRateJson(const std::filesystem::path& filePath);
-void loadRatingsFromFile();
-void parseRatingsJson(const std::string& jsonContent);
-void createFakeRateSavedJson();
-GJDifficulty getDifficultyFromValue(int difficulty);
-int getDemonTypeFromDifficulty(int difficulty);
-static void applyRatingToLevel(GJGameLevel* level, const RatingData& rating);
+void updateFakeRateSavedJson();
 
 $on_mod(Loaded) {
-    createResourcesStructure();
-    loadRatingsFromFile();
-    createFakeRateSavedJson();
+    try {
+        log::info("Initialisation du mod New Rated Levels");
+        createResourcesStructure();
+        updateFakeRateSavedJson();
+        log::info("Mod New Rated Levels initialisé avec succès");
+    } catch (const std::exception& e) {
+        log::error("Erreur lors de l'initialisation du mod: {}", e.what());
+    }
 }
 
 void createResourcesStructure() {
     try {
         auto resourcesDir = Mod::get()->getResourcesDir();
-        auto modSubDir = resourcesDir / "somroteam_dev.new_rated_levels";
+        if (!resourcesDir.has_value()) {
+            log::error("Impossible d'obtenir le répertoire des ressources");
+            return;
+        }
+
+        auto modSubDir = resourcesDir.value() / "somroteam_dev.new_rated_levels";
         auto ratingsFile = modSubDir / "rate.json";
 
-        if (!std::filesystem::exists(resourcesDir)) {
-            std::filesystem::create_directories(resourcesDir);
+        if (!std::filesystem::exists(resourcesDir.value())) {
+            std::filesystem::create_directories(resourcesDir.value());
         }
 
         if (!std::filesystem::exists(modSubDir)) {
@@ -47,350 +43,403 @@ void createResourcesStructure() {
             createDefaultRateJson(ratingsFile);
         }
     } catch (const std::exception& e) {
-        // Erreur silencieuse
+        log::error("Erreur lors de la création de la structure des ressources: {}", e.what());
     }
 }
 
 void createDefaultRateJson(const std::filesystem::path& filePath) {
     try {
         std::ofstream file(filePath);
-        if (!file.is_open()) return;
+        if (!file.is_open()) {
+            log::error("Impossible d'ouvrir le fichier rate.json pour l'écriture");
+            return;
+        }
 
         file << R"({
     "levels": {
-        "117448912": {
-            "stars": 10,
-            "difficulty": 7,
-            "status": 0,
-            "dib": 3
-        },
-        "117251972": {
-            "stars": 7,
-            "difficulty": 4,
-            "status": 1,
-            "dib": 0
-        },
-        "119154457": {
-            "stars": 10,
-            "difficulty": 8,
-            "status": 1,
-            "dib": 6
-        },
-        "119183902": {
-            "stars": 5,
-            "difficulty": 3,
-            "status": 1,
-            "dib": 0
-        },
-        "114552735": {
-            "stars": 4,
-            "difficulty": 3,
-            "status": 1,
-            "dib": 0
-        },
-        "113620475": {
-            "stars": 5,
-            "difficulty": 3,
-            "status": 0,
-            "dib": 0
-        },
-        "112856885": {
-            "stars": 1,
-            "difficulty": 1,
-            "status": 0,
-            "dib": 0
-        },
-        "120897907": {
-            "stars": 2,
-            "difficulty": 1,
-            "status": 0,
-            "dib": 0
-        }
+        "117448912": { "stars": 10, "difficulty": 7, "status": 0, "dib": 0 },
+        "117251972": { "stars": 7, "difficulty": 4, "status": 1, "dib": 0 },
+        "119154457": { "stars": 10, "difficulty": 8, "status": 1, "dib": 6 },
+        "119183902": { "stars": 5, "difficulty": 3, "status": 1, "dib": 0 },
+        "114552735": { "stars": 4, "difficulty": 3, "status": 1, "dib": 0 },
+        "113620475": { "stars": 5, "difficulty": 3, "status": 0, "dib": 0 },
+        "112856885": { "stars": 1, "difficulty": 1, "status": 0, "dib": 0 },
+        "120897907": { "stars": 2, "difficulty": 1, "status": 0, "dib": 0 }
     }
 })";
         file.close();
+        log::info("Fichier rate.json par défaut créé avec succès");
     } catch (const std::exception& e) {
-        // Erreur silencieuse
+        log::error("Erreur lors de la création du fichier rate.json par défaut: {}", e.what());
     }
 }
 
-void loadRatingsFromFile() {
-    auto resourcesDir = Mod::get()->getResourcesDir();
-    auto modSubDir = resourcesDir / "somroteam_dev.new_rated_levels";
-    auto ratingsFile = modSubDir / "rate.json";
-
-    if (!std::filesystem::exists(ratingsFile)) return;
-
+void updateFakeRateSavedJson() {
     try {
-        std::ifstream file(ratingsFile);
-        if (!file.is_open()) return;
-
-        std::string content;
-        std::ostringstream contentStream;
-        contentStream << file.rdbuf();
-        content = contentStream.str();
-        file.close();
-
-        if (!content.empty()) {
-            parseRatingsJson(content);
-            cacheLoaded = true;
+        auto resourcesDir = Mod::get()->getResourcesDir();
+        if (!resourcesDir.has_value()) {
+            log::error("Impossible d'obtenir le répertoire des ressources");
+            return;
         }
-    } catch (const std::exception& e) {
-        // Erreur silencieuse
-    }
-}
 
-void parseRatingsJson(const std::string& jsonContent) {
-    ratingsCache.clear();
+        auto modSubDir = resourcesDir.value() / "somroteam_dev.new_rated_levels";
+        auto ratingsFile = modSubDir / "rate.json";
 
-    std::regex levelRegex("\"(\\d+)\"\\s*:\\s*\\{[^}]*\"stars\"\\s*:\\s*(\\d+)[^}]*\"difficulty\"\\s*:\\s*(\\d+)[^}]*\"status\"\\s*:\\s*(\\d+)[^}]*\"dib\"\\s*:\\s*(\\d+)[^}]*\\}");
+        if (!std::filesystem::exists(ratingsFile)) {
+            log::warn("Fichier rate.json non trouvé");
+            return;
+        }
 
-    std::sregex_iterator iter(jsonContent.begin(), jsonContent.end(), levelRegex);
-    std::sregex_iterator end;
+        std::ifstream rateFile(ratingsFile);
+        if (!rateFile.is_open()) {
+            log::error("Impossible d'ouvrir rate.json");
+            return;
+        }
 
-    while (iter != end) {
-        std::smatch match = *iter;
+        std::string content((std::istreambuf_iterator<char>(rateFile)), std::istreambuf_iterator<char>());
+        rateFile.close();
 
-        try {
+        auto geodeDir = geode::dirs::getSaveDir();
+        auto fakeRateDir = geodeDir / "geode" / "mods" / "hiimjustin000.fake_rate";
+        auto savedJsonFile = fakeRateDir / "saved.json";
+
+        if (!std::filesystem::exists(fakeRateDir)) {
+            std::filesystem::create_directories(fakeRateDir);
+        }
+
+        std::ofstream outFile(savedJsonFile);
+        if (!outFile.is_open()) {
+            log::error("Impossible d'ouvrir saved.json pour l'écriture");
+            return;
+        }
+
+        outFile << "{\n    \"fake-rate\": [";
+
+        std::regex levelRegex("\"(\\d+)\"\\s*:\\s*\\{[^}]*\"stars\"\\s*:\\s*(\\d+)[^}]*\"difficulty\"\\s*:\\s*(\\d+)[^}]*\"status\"\\s*:\\s*(\\d+)[^}]*\"dib\"\\s*:\\s*(\\d+)");
+
+        std::sregex_iterator iter(content.begin(), content.end(), levelRegex);
+        std::sregex_iterator end;
+
+        bool first = true;
+        while (iter != end) {
+            std::smatch match = *iter;
+
             int levelID = std::stoi(match[1].str());
             int stars = std::stoi(match[2].str());
             int difficulty = std::stoi(match[3].str());
             int status = std::stoi(match[4].str());
             int dib = std::stoi(match[5].str());
 
-            if (stars >= 0 && stars <= 10 && difficulty >= 0 && difficulty <= 10 && status >= 0 && status <= 4 && dib >= 0) {
-                ratingsCache[levelID] = {stars, difficulty, status, dib};
-            }
-        } catch (const std::exception& e) {
-            // Ignorer les erreurs de parsing
-        }
-
-        ++iter;
-    }
-}
-
-void createFakeRateSavedJson() {
-    if (!cacheLoaded || ratingsCache.empty()) return;
-
-    // Utiliser le répertoire de sauvegarde de l'utilisateur pour les mods
-    auto geodeDir = geode::dirs::getSaveDir();
-    auto fakeRateDir = geodeDir / "geode" / "mods" / "hiimjustin000.fake_rate";
-    auto savedJsonFile = fakeRateDir / "saved.json";
-
-    try {
-        // Créer le dossier Fake Rate s'il n'existe pas
-        if (!std::filesystem::exists(fakeRateDir)) {
-            std::filesystem::create_directories(fakeRateDir);
-        }
-
-        std::ofstream file(savedJsonFile);
-        if (!file.is_open()) return;
-
-        file << "{\n    \"fake-rate\": [";
-
-        bool first = true;
-        for (const auto& [levelID, rating] : ratingsCache) {
-            if (!first) {
-                file << ",";
-            }
+            if (!first) outFile << ",";
             first = false;
 
-            // Calculer more-difficulties-override en fonction des étoiles
-            int moreDifficultiesOverride = 0;
-            if (rating.stars == 4 || rating.stars == 7 || rating.stars == 9) {
-                moreDifficultiesOverride = rating.stars;
-            }
+            int moreDifficultiesOverride = (stars == 4 || stars == 7 || stars == 9) ? stars : 0;
 
-            file << "\n        {\n";
-            file << "            \"id\": " << levelID << ",\n";
-            file << "            \"stars\": " << rating.stars << ",\n";
-            file << "            \"feature\": " << rating.status << ",\n";
-            file << "            \"difficulty\": " << rating.difficulty << ",\n";
-            file << "            \"more-difficulties-override\": " << moreDifficultiesOverride << ",\n";
-            file << "            \"grandpa-demon-override\": 0,\n";
-            file << "            \"demons-in-between-override\": " << rating.dib << ",\n";
-            file << "            \"gddp-integration-override\": 0,\n";
-            file << "            \"coins\": " << (rating.stars > 0 ? "true" : "false") << "\n";
-            file << "        }";
+            outFile << "\n        {\n";
+            outFile << "            \"id\": " << levelID << ",\n";
+            outFile << "            \"stars\": " << stars << ",\n";
+            outFile << "            \"feature\": " << status << ",\n";
+            outFile << "            \"difficulty\": " << difficulty << ",\n";
+            outFile << "            \"more-difficulties-override\": " << moreDifficultiesOverride << ",\n";
+            outFile << "            \"grandpa-demon-override\": 0,\n";
+            outFile << "            \"demons-in-between-override\": " << dib << ",\n";
+            outFile << "            \"gddp-integration-override\": 0,\n";
+            outFile << "            \"coins\": " << (stars > 0 ? "true" : "false") << "\n";
+            outFile << "        }";
+
+            ++iter;
         }
 
-        file << "\n    ]\n}";
-        file.close();
+        outFile << "\n    ]\n}";
+        outFile.close();
+
+        log::info("Fichier saved.json créé avec succès");
     } catch (const std::exception& e) {
-        // Erreur silencieuse
+        log::error("Erreur lors de la création du saved.json: {}", e.what());
+    }
+}
+}
+        log::warn("Cache non chargé ou vide, impossible de mettre à jour saved.json");
+    if (isProcessing.load()) {
+
+    try {
+
+        }
+
+            if (existingLevels.find(levelID) == existingLevels.end()) {
+
+            return;
+        if (std::filesystem::exists(savedJsonFile)) {
+
+        if (hasExistingFile) {
+                contentStream << existingFile.rdbuf();
+        }
+            log::error("Impossible d'ouvrir saved.json pour l'écriture");
+
+void updateFakeRateSavedJson() {
+        auto resourcesDir = Mod::get()->getResourcesDir();
+            log::error("Impossible d'obtenir le répertoire des ressources");
+        }
+        auto modSubDir = resourcesDir.value() / "somroteam_dev.new_rated_levels";
+
+            log::warn("Fichier rate.json non trouvé");
+        }
+        // Lire le fichier rate.json
+        if (!rateFile.is_open()) {
+            return;
+
+                           std::istreambuf_iterator<char>());
+
+        auto geodeDir = geode::dirs::getSaveDir();
+        auto savedJsonFile = fakeRateDir / "saved.json";
+        if (!std::filesystem::exists(fakeRateDir)) {
+        }
+        // Parser et écrire directement
+        if (!outFile.is_open()) {
+            return;
+
+        outFile << "{\n    \"fake-rate\": [";
+
+        // Parser simplement le JSON
+        std::regex levelRegex("\"(\\d+)\"\\s*:\\s*\\{[^}]*\"stars\"\\s*:\\s*(\\d+)[^}]*\"difficulty\"\\s*:\\s*(\\d+)[^}]*\"status\"\\s*:\\s*(\\d+)[^}]*\"dib\"\\s*:\\s*(\\d+)");
+
+        std::sregex_iterator iter(content.begin(), content.end(), levelRegex);
+        std::sregex_iterator end;
+
+        bool first = true;
+        while (iter != end) {
+            std::smatch match = *iter;
+
+            int levelID = std::stoi(match[1].str());
+            int stars = std::stoi(match[2].str());
+            int difficulty = std::stoi(match[3].str());
+            int status = std::stoi(match[4].str());
+            int dib = std::stoi(match[5].str());
+
+            if (!first) outFile << ",";
+            first = false;
+
+            int moreDifficultiesOverride = (stars == 4 || stars == 7 || stars == 9) ? stars : 0;
+
+            outFile << "\n        {\n";
+            outFile << "            \"id\": " << levelID << ",\n";
+            outFile << "            \"stars\": " << stars << ",\n";
+            outFile << "            \"feature\": " << status << ",\n";
+            outFile << "            \"difficulty\": " << difficulty << ",\n";
+            outFile << "            \"more-difficulties-override\": " << moreDifficultiesOverride << ",\n";
+            outFile << "            \"grandpa-demon-override\": 0,\n";
+            outFile << "            \"demons-in-between-override\": " << dib << ",\n";
+            outFile << "            \"gddp-integration-override\": 0,\n";
+            outFile << "            \"coins\": " << (stars > 0 ? "true" : "false") << "\n";
+            outFile << "        }";
+
+            ++iter;
+        }
+
+        outFile << "\n    ]\n}";
+        outFile.close();
+
+        log::info("Fichier saved.json créé avec succès");
+    } catch (const std::exception& e) {
+        log::error("Erreur lors de la création du saved.json: {}", e.what());
+    }
+}
+    }
+
+    isProcessing.store(false);
+}
+
+static bool isValidLevel(GJGameLevel* level) {
+    if (!level) return false;
+
+    try {
+        // Vérifications de base pour s'assurer que l'objet est valide
+        int id = level->m_levelID;
+        return id > 0 && id < 999999999;
+    } catch (...) {
+        return false;
     }
 }
 
-GJDifficulty getDifficultyFromValue(int difficulty) {
-    switch (difficulty) {
-        case 0:
-        case 1:
-        case 2:
-        case 3:
-        case 4:
-        case 5:
-        case 6:
-        case 7:
-        case 8:
-        case 9:
-        case 10: return GJDifficulty::Demon;
-        default: return GJDifficulty::Normal;
+static bool applyRatingToLevel(GJGameLevel* level, const RatingData& rating) {
+    if (!isValidLevel(level)) return false;
+
+    try {
+        // Sauvegarder les valeurs originales en cas d'erreur
+        int originalStars = level->m_stars;
+        int originalStarsRequested = level->m_starsRequested;
+        int originalRatingsSum = level->m_ratingsSum;
+
+        // Application sécurisée des modifications
+        level->m_stars = rating.stars;
+        level->m_starsRequested = rating.stars;
+        level->m_ratingsSum = rating.stars * 10;
+
+        // Vérifier que l'application s'est bien passée
+        if (level->m_stars != rating.stars) {
+            // Restaurer en cas de problème
+            level->m_stars = originalStars;
+            level->m_starsRequested = originalStarsRequested;
+            level->m_ratingsSum = originalRatingsSum;
+            return false;
+        }
+
+        // User coins avec vérification
+        if (level->m_coins > 0 && level->m_coins <= 3) {
+            level->m_coinsVerified = level->m_coins;
+        }
+
+        return true;
+    } catch (const std::exception& e) {
+        log::error("Erreur lors de l'application du rating au niveau {}: {}", level->m_levelID, e.what());
+        return false;
+    } catch (...) {
+        log::error("Erreur inconnue lors de l'application du rating");
+        return false;
     }
 }
 
-int getDemonTypeFromDifficulty(int difficulty) {
-    switch (difficulty) {
-        case 6: return 0; // Hard Demon
-        case 7: return 3; // Easy Demon
-        case 8: return 4; // Medium Demon
-        case 9: return 5; // Insane Demon
-        case 10: return 6; // Extreme Demon
-        default: return 0;
+// Fonction helper pour appliquer les ratings de manière sécurisée
+static void safeApplyRating(GJGameLevel* level) {
+    if (!cacheLoaded.load() || !isValidLevel(level)) return;
+
+    try {
+        std::lock_guard<std::mutex> lock(cacheMutex);
+        auto it = ratingsCache.find(level->m_levelID);
+        if (it != ratingsCache.end()) {
+            applyRatingToLevel(level, it->second);
+        }
+    } catch (...) {
+        // Erreur silencieuse pour éviter les crashes
     }
 }
 
-static void applyRatingToLevel(GJGameLevel* level, const RatingData& rating) {
-    if (!level) return;
-
-    // Configuration des étoiles seulement - laisser Fake Rate gérer les icônes
-    level->m_stars = rating.stars;
-    level->m_starsRequested = rating.stars;
-    level->m_ratingsSum = rating.stars * 10;
-
-    // User coins
-    if (level->m_coins > 0) {
-        level->m_coinsVerified = level->m_coins;
-    }
-}
-
-// Hooks
+// Hooks simplifiés et sécurisés
 class $modify(NewRatedLevelsLevelInfo, LevelInfoLayer) {
     bool init(GJGameLevel* level, bool challenge) {
-        if (cacheLoaded && level) {
-            auto it = ratingsCache.find(level->m_levelID);
-            if (it != ratingsCache.end()) {
-                applyRatingToLevel(level, it->second);
-            }
-        }
+        bool result = false;
 
-        bool result = LevelInfoLayer::init(level, challenge);
-
-        if (result && cacheLoaded && level) {
-            auto it = ratingsCache.find(level->m_levelID);
-            if (it != ratingsCache.end()) {
-                applyRatingToLevel(level, it->second);
+        try {
+            result = LevelInfoLayer::init(level, challenge);
+            if (result) {
+                safeApplyRating(level);
             }
+        } catch (const std::exception& e) {
+            log::error("Erreur dans LevelInfoLayer::init: {}", e.what());
+            // Tenter l'initialisation de base même en cas d'erreur
+            result = LevelInfoLayer::init(level, challenge);
+        } catch (...) {
+            log::error("Erreur inconnue dans LevelInfoLayer::init");
+            result = LevelInfoLayer::init(level, challenge);
         }
 
         return result;
     }
 
     void updateLabelValues() {
-        if (this->m_level && cacheLoaded) {
-            auto it = ratingsCache.find(this->m_level->m_levelID);
-            if (it != ratingsCache.end()) {
-                applyRatingToLevel(this->m_level, it->second);
-            }
+        try {
+            safeApplyRating(this->m_level);
+            LevelInfoLayer::updateLabelValues();
+        } catch (...) {
+            LevelInfoLayer::updateLabelValues();
         }
-
-        LevelInfoLayer::updateLabelValues();
     }
 };
 
 class $modify(NewRatedLevelsLevelBrowserLayer, LevelBrowserLayer) {
     void loadPage(GJSearchObject* searchObj) {
-        LevelBrowserLayer::loadPage(searchObj);
+        try {
+            LevelBrowserLayer::loadPage(searchObj);
 
-        if (cacheLoaded) {
-            Loader::get()->queueInMainThread([this]() {
-                this->applyRatingsToLoadedLevels();
-            });
+            if (cacheLoaded.load()) {
+                // Délai pour éviter la surcharge
+                Loader::get()->queueInMainThread([this]() {
+                    this->applyRatingsToLoadedLevels();
+                });
+            }
+        } catch (...) {
+            LevelBrowserLayer::loadPage(searchObj);
         }
     }
 
     void setupLevelBrowser(cocos2d::CCArray* levels) {
-        if (cacheLoaded && levels) {
-            for (int i = 0; i < levels->count(); i++) {
-                GJGameLevel* level = static_cast<GJGameLevel*>(levels->objectAtIndex(i));
-                if (level) {
-                    auto it = ratingsCache.find(level->m_levelID);
-                    if (it != ratingsCache.end()) {
-                        applyRatingToLevel(level, it->second);
+        try {
+            LevelBrowserLayer::setupLevelBrowser(levels);
+
+            if (cacheLoaded.load() && levels && levels->count() > 0) {
+                std::lock_guard<std::mutex> lock(cacheMutex);
+                int count = std::min(levels->count(), 500); // Limiter à 500 niveaux max
+
+                for (int i = 0; i < count; i++) {
+                    auto* obj = levels->objectAtIndex(i);
+                    if (obj) {
+                        GJGameLevel* level = dynamic_cast<GJGameLevel*>(obj);
+                        if (isValidLevel(level)) {
+                            auto it = ratingsCache.find(level->m_levelID);
+                            if (it != ratingsCache.end()) {
+                                applyRatingToLevel(level, it->second);
+                            }
+                        }
                     }
                 }
             }
+        } catch (...) {
+            LevelBrowserLayer::setupLevelBrowser(levels);
         }
-
-        LevelBrowserLayer::setupLevelBrowser(levels);
     }
 
     void applyRatingsToLoadedLevels() {
-        if (!this->m_levels) return;
+        try {
+            if (!this->m_levels || !cacheLoaded.load()) return;
 
-        for (int i = 0; i < this->m_levels->count(); i++) {
-            GJGameLevel* level = static_cast<GJGameLevel*>(this->m_levels->objectAtIndex(i));
-            if (level) {
-                auto it = ratingsCache.find(level->m_levelID);
-                if (it != ratingsCache.end()) {
-                    applyRatingToLevel(level, it->second);
+            std::lock_guard<std::mutex> lock(cacheMutex);
+            int count = std::min(this->m_levels->count(), 500); // Limite de sécurité
+
+            for (int i = 0; i < count; i++) {
+                auto* obj = this->m_levels->objectAtIndex(i);
+                if (obj) {
+                    GJGameLevel* level = dynamic_cast<GJGameLevel*>(obj);
+                    if (isValidLevel(level)) {
+                        auto it = ratingsCache.find(level->m_levelID);
+                        if (it != ratingsCache.end()) {
+                            applyRatingToLevel(level, it->second);
+                        }
+                    }
                 }
             }
+        } catch (...) {
+            // Erreur silencieuse
         }
     }
 };
 
 class $modify(NewRatedLevelsLevelCell, LevelCell) {
     void loadFromLevel(GJGameLevel* level) {
-        if (cacheLoaded && level) {
-            auto it = ratingsCache.find(level->m_levelID);
-            if (it != ratingsCache.end()) {
-                applyRatingToLevel(level, it->second);
-            }
-        }
-
-        LevelCell::loadFromLevel(level);
-
-        if (cacheLoaded && level) {
-            auto it = ratingsCache.find(level->m_levelID);
-            if (it != ratingsCache.end()) {
-                applyRatingToLevel(level, it->second);
-            }
+        try {
+            safeApplyRating(level);
+            LevelCell::loadFromLevel(level);
+        } catch (...) {
+            LevelCell::loadFromLevel(level);
         }
     }
 };
 
 class $modify(NewRatedLevelsPlayLayer, PlayLayer) {
     void levelComplete() {
-        RatingData customRating = {0, 0, 0, 0};
-        bool hasCustomRating = false;
-
-        if (this->m_level && cacheLoaded) {
-            auto it = ratingsCache.find(this->m_level->m_levelID);
-            if (it != ratingsCache.end()) {
-                hasCustomRating = true;
-                customRating = it->second;
-            }
-        }
-
-        PlayLayer::levelComplete();
-
-        if (hasCustomRating && this->m_level) {
-            Loader::get()->queueInMainThread([this, customRating]() {
-                if (this->m_level) {
-                    applyRatingToLevel(this->m_level, customRating);
-                }
-            });
+        try {
+            PlayLayer::levelComplete();
+            safeApplyRating(this->m_level);
+        } catch (...) {
+            PlayLayer::levelComplete();
         }
     }
 
     void onQuit() {
-        if (this->m_level && cacheLoaded) {
-            auto it = ratingsCache.find(this->m_level->m_levelID);
-            if (it != ratingsCache.end()) {
-                applyRatingToLevel(this->m_level, it->second);
-            }
+        try {
+            safeApplyRating(this->m_level);
+            PlayLayer::onQuit();
+        } catch (...) {
+            PlayLayer::onQuit();
         }
-
-        PlayLayer::onQuit();
     }
 };
